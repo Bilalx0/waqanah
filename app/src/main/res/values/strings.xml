@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">Waqanah</string>
+
+    <!-- Shield Mode Checklist & Instructions -->
+    <string name="enable_shield_mode_title">Enable Shield mode</string>
+    <string name="checklist_step_1">1. Temporarily remove all accounts from the phone (Settings > Accounts: Google, Samsung, Xiaomi, etc.). They can be re-added after setup.</string>
+    <string name="checklist_step_2">2. Remove any extra users, guest user or work profile.</string>
+    <string name="checklist_step_3">3. Enable Developer options > USB debugging (on Xiaomi/MIUI also enable "USB debugging (Security settings)").</string>
+    <string name="checklist_step_4">4. Connect the phone to a PC and run this command:</string>
+    <string name="adb_command">adb shell dpm set-device-owner com.waqanah.app/.service.admin.WaqanahDeviceAdminReceiver</string>
+    <string name="checklist_step_5">5. Return to the app and tap "Check again".</string>
+    <string name="btn_copy_command">Copy</string>
+    <string name="btn_copied">Copied!</string>
+    <string name="btn_check_again">Check again</string>
+
+    <!-- Troubleshooting -->
+    <string name="troubleshooting_title">Troubleshooting Common Errors</string>
+    <string name="troubleshooting_accounts_error">• "there are already some accounts on the device": Go to Settings > Accounts &amp; Sync and remove all logged-in accounts (Google, Samsung, Mi, etc.). You can log back in after setup.</string>
+    <string name="troubleshooting_users_error">• "there are already several users on the device": Remove guest profiles or secondary users in Settings > System > Multiple Users.</string>
+
+    <!-- Status -->
+    <string name="shield_active_title">Shield mode ready: Device Owner active</string>
+    <string name="shield_active_desc">Device Owner is provisioned. Waqanah hardware self-guardianship is active.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">App Settings &amp; Preferences</string>
+    <string name="pref_translation_title">Preferred Quran Translation</string>
+    <string name="pref_reciter_title">Preferred Audio Reciter (Qari)</string>
+    <string name="security_status_title">Security &amp; Device Owner Status</string>
+    <string name="device_owner_status_label">Device Owner Provisioned: %1$s</string>
+    <string name="blocked_packages_title">Blocked Packages List:</string>
+    <string name="btn_debug_remove_owner">Remove Device Owner (debug only)</string>
+    <string name="dialog_remove_owner_title">Remove Device Owner?</string>
+    <string name="dialog_remove_owner_desc">This will remove Waqanah\'s Device Owner status from this device. This option is only available in debug builds.</string>
+    <string name="btn_confirm">Remove</string>
+    <string name="btn_cancel">Cancel</string>
+</resources>

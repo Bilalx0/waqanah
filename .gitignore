@@ -1,0 +1,22 @@
+# Gradle
+.gradle/
+**/build/
+
+# Android Studio
+local.properties
+*.iml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/deploymentTargetSelector.xml
+
+# Android build artifacts
+captures/
+.externalNativeBuild/
+.cxx/
+
+# macOS
+.DS_Store

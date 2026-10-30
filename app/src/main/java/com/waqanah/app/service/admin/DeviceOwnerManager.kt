@@ -3,6 +3,7 @@ package com.waqanah.app.service.admin
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import com.waqanah.app.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,8 +34,13 @@ class DeviceOwnerManager(private val context: Context) {
         _status.value = getOwnerStatus()
     }
 
+    /**
+     * Clears Device Owner status for testing.
+     * Debug-only helper; guarded by BuildConfig.DEBUG so it never executes in release builds.
+     */
     @Suppress("DEPRECATION")
     fun clearDeviceOwnerApp() {
+        if (!BuildConfig.DEBUG) return
         if (isDeviceOwner()) {
             devicePolicyManager.clearDeviceOwnerApp(context.packageName)
             refresh()

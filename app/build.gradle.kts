@@ -50,6 +50,9 @@ android {
 }
 
 dependencies {
+    // Testing
+    testImplementation(libs.junit)
+
     // AndroidX Core & Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

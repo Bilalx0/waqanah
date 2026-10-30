@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.waqanah.app.BuildConfig
+import com.waqanah.app.WaqanahApplication
 import com.waqanah.app.data.local.WaqanahPreferences
 import com.waqanah.app.data.network.QuranApiService
 import com.waqanah.app.data.repository.QuranRepositoryImpl
@@ -32,7 +33,7 @@ data class SettingsUiState(
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val preferences = WaqanahPreferences(application)
-    val deviceOwnerManager = DeviceOwnerManager(application)
+    val deviceOwnerManager: DeviceOwnerManager = (application as WaqanahApplication).deviceOwnerManager
 
     private val retrofit = Retrofit.Builder()
         .baseUrl(QuranApiService.BASE_URL)

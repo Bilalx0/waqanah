@@ -106,7 +106,7 @@ fun SettingsScreen(
                                 ?: uiState.selectedTranslation,
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown")
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.cd_dropdown))
                     }
                     DropdownMenu(
                         expanded = showTranslationDropdown,
@@ -150,7 +150,7 @@ fun SettingsScreen(
                                 ?: uiState.selectedReciter,
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown")
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.cd_dropdown))
                     }
                     DropdownMenu(
                         expanded = showReciterDropdown,
@@ -182,7 +182,8 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 val isOwner = uiState.deviceOwnerStatus is DeviceOwnerStatus.Active
-                Text(text = stringResource(R.string.device_owner_status_label, if (isOwner) "Active ✅" else "Not Provisioned ❌"))
+                val statusText = if (isOwner) stringResource(R.string.status_active) else stringResource(R.string.status_not_provisioned)
+                Text(text = stringResource(R.string.device_owner_status_label, statusText))
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
@@ -193,7 +194,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(4.dp))
                 uiState.blockedPackages.forEach { pkg ->
                     Text(
-                        text = "• $pkg",
+                        text = stringResource(R.string.item_format_bullet_pkg, pkg),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

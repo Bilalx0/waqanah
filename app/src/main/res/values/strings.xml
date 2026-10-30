@@ -5,24 +5,30 @@
     <string name="enable_shield_mode_title">Enable Shield mode</string>
     <string name="checklist_step_1">1. Temporarily remove all accounts from the phone (Settings > Accounts: Google, Samsung, Xiaomi, etc.). They can be re-added after setup.</string>
     <string name="checklist_step_2">2. Remove any extra users, guest user or work profile.</string>
-    <string name="checklist_step_3">3. Enable Developer options > USB debugging (on Xiaomi/MIUI also enable "USB debugging (Security settings)").</string>
+    <string name="checklist_step_3">3. Enable Developer options > USB debugging (on Xiaomi/MIUI also enable \"USB debugging (Security settings)\").</string>
     <string name="checklist_step_4">4. Connect the phone to a PC and run this command:</string>
     <string name="adb_command">adb shell dpm set-device-owner com.waqanah.app/.service.admin.WaqanahDeviceAdminReceiver</string>
-    <string name="checklist_step_5">5. Return to the app and tap "Check again".</string>
+    <string name="checklist_step_5">5. Return to the app and tap \"Check again\".</string>
     <string name="btn_copy_command">Copy</string>
     <string name="btn_copied">Copied!</string>
     <string name="btn_check_again">Check again</string>
 
     <!-- Troubleshooting -->
     <string name="troubleshooting_title">Troubleshooting Common Errors</string>
-    <string name="troubleshooting_accounts_error">• "there are already some accounts on the device": Go to Settings > Accounts &amp; Sync and remove all logged-in accounts (Google, Samsung, Mi, etc.). You can log back in after setup.</string>
-    <string name="troubleshooting_users_error">• "there are already several users on the device": Remove guest profiles or secondary users in Settings > System > Multiple Users.</string>
+    <string name="troubleshooting_accounts_error">• \"there are already some accounts on the device\": Go to Settings > Accounts &amp; Sync and remove all logged-in accounts (Google, Samsung, Mi, etc.). You can log back in after setup.</string>
+    <string name="troubleshooting_users_error">• \"there are already several users on the device\": Remove guest profiles or secondary users in Settings > System > Multiple Users.</string>
 
-    <!-- Status -->
+    <!-- Status & Content Descriptions -->
     <string name="shield_active_title">Shield mode ready: Device Owner active</string>
     <string name="shield_active_desc">Device Owner is provisioned. Waqanah hardware self-guardianship is active.</string>
+    <string name="status_active">Active ✅</string>
+    <string name="status_not_provisioned">Not Provisioned ❌</string>
+    <string name="cd_toggle_troubleshooting">Toggle Troubleshooting</string>
+    <string name="cd_dropdown">Dropdown</string>
+    <string name="toast_device_owner_enabled">Waqanah Device Owner Enabled</string>
+    <string name="toast_device_owner_disabled">Waqanah Device Owner Disabled</string>
 
-    <!-- Settings -->
+    <!-- Settings & Enforcement Engine UI -->
     <string name="settings_title">App Settings &amp; Preferences</string>
     <string name="pref_translation_title">Preferred Quran Translation</string>
     <string name="pref_reciter_title">Preferred Audio Reciter (Qari)</string>
@@ -32,6 +38,38 @@
     <string name="btn_debug_remove_owner">Remove Device Owner (debug only)</string>
     <string name="dialog_remove_owner_title">Remove Device Owner?</string>
     <string name="dialog_remove_owner_desc">This will remove Waqanah\'s Device Owner status from this device. This option is only available in debug builds.</string>
-    <string name="btn_confirm">Remove</string>
+    <string name="btn_confirm">Confirm</string>
     <string name="btn_cancel">Cancel</string>
+
+    <!-- Enforcement Engine -->
+    <string name="label_protection_enabled">Protection Enabled</string>
+    <string name="label_allowed_browser">Allowed Browser</string>
+    <string name="none_browser_inactive">None (Browser rule inactive)</string>
+    <string name="warning_no_allowed_browser">Select an allowed browser to enable browser enforcement rules.</string>
+    <string name="label_enforcement_mode">When a blocked app is found:</string>
+    <string name="mode_hide_and_suspend">Hide &amp; Suspend (Recommended)</string>
+    <string name="mode_uninstall">Uninstall</string>
+    <string name="dialog_uninstall_warning_title">Uninstall Blocked Apps?</string>
+    <string name="dialog_uninstall_warning_desc">Apps that violate enforcement policy will be silently uninstalled. This action deletes all app data and cannot be undone automatically.</string>
+    <string name="label_hide_system_browsers">Also hide pre-installed system browsers</string>
+    <string name="btn_preview">Preview Enforcement Plan</string>
+    <string name="btn_scan_and_apply">Scan &amp; Apply Now</string>
+    <string name="title_preview_dialog">Enforcement Plan Preview</string>
+    <string name="label_target_count">Target Apps to Action: %1$d</string>
+    <string name="label_skipped_count">Skipped Apps: %1$d</string>
+    <string name="title_hidden_by_waqanah">Apps Hidden by Waqanah</string>
+    <string name="no_hidden_apps">No apps currently hidden by Waqanah.</string>
+    <string name="title_uninstalled_by_waqanah">Uninstalled by Waqanah (cannot be restored)</string>
+    <string name="no_uninstalled_apps">No apps currently uninstalled by Waqanah.</string>
+    <string name="btn_never_hide_allowlist">Never Hide (Allow-list)</string>
+    <string name="btn_custom_blocklist">Custom Blocklist</string>
+    <string name="search_apps_hint">Search apps&#8230;</string>
+    <string name="btn_save">Save</string>
+    <string name="item_format_bullet_pkg">• %1$s</string>
+    <string name="item_format_hidden_pkg">• %1$s [%2$s]</string>
+    <string name="item_format_preview_target">• %1$s (%2$s) [%3$s]</string>
+
+    <!-- One-shot Messages -->
+    <string name="msg_apply_summary">Enforcement complete: %1$d applied, %2$d unchanged, %3$d failed</string>
+    <string name="msg_release_summary">Protection disabled: %1$d restored, %2$d failed</string>
 </resources>

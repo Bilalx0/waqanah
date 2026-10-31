@@ -69,6 +69,21 @@
     <string name="item_format_hidden_pkg">• %1$s [%2$s]</string>
     <string name="item_format_preview_target">• %1$s (%2$s) [%3$s]</string>
 
+    <!-- Step 3 Real-time Service UI & Notification -->
+    <string name="card_bg_protection_title">Background protection</string>
+    <string name="label_service_status">Service Status: %1$s</string>
+    <string name="service_running">Running 🟢</string>
+    <string name="service_stopped">Stopped 🔴</string>
+    <string name="label_last_scan">Last scan: %1$s</string>
+    <string name="time_never">Never</string>
+    <string name="btn_allow_bg_activity">Allow background activity</string>
+    <string name="help_samsung_bg_limits">On Samsung also add Waqanah under Settings > Battery > Background usage limits > Never sleeping apps.</string>
+    <string name="hint_notification_permission_denied">Notification permission denied. Background protection will still run silently.</string>
+    <string name="notification_channel_name">Waqanah Shield Status</string>
+    <string name="notification_channel_desc">Shows real-time Waqanah protection and scan status</string>
+    <string name="notification_shield_title">Waqanah Shield active</string>
+    <string name="notification_shield_text">%1$d apps hidden · last scan %2$s</string>
+
     <!-- One-shot Messages -->
     <string name="msg_apply_summary">Enforcement complete: %1$d applied, %2$d unchanged, %3$d failed</string>
     <string name="msg_release_summary">Protection disabled: %1$d restored, %2$d failed</string>

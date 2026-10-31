@@ -1,6 +1,13 @@
 package com.waqanah.app.ui.admin
 
+import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,6 +70,10 @@ import com.waqanah.app.R
 import com.waqanah.app.service.admin.DeviceOwnerStatus
 import com.waqanah.app.service.enforcement.AppInfo
 import com.waqanah.app.service.enforcement.EnforcementMode
+import com.waqanah.app.service.enforcement.ShieldService
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun FocusLockScreen(
@@ -73,7 +84,19 @@ fun FocusLockScreen(
     val previewPlan by viewModel.previewPlan.collectAsState()
     val detectedBrowsers by viewModel.detectedBrowsers.collectAsState()
     val installedNonSystemApps by viewModel.installedNonSystemApps.collectAsState()
+    val isServiceRunning by ShieldService.running.collectAsState()
     val context = LocalContext.current
+
+    var notificationDeniedHint by remember { mutableStateOf(false) }
+
+    val notificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            notificationDeniedHint = true
+        }
+        viewModel.setProtectionEnabled(true)
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -124,8 +147,17 @@ fun FocusLockScreen(
 
                 ActiveEnforcementPanel(
                     uiState = uiState,
+                    isServiceRunning = isServiceRunning,
+                    notificationDeniedHint = notificationDeniedHint,
                     detectedBrowsers = detectedBrowsers,
                     installedNonSystemApps = installedNonSystemApps,
+                    onProtectionToggle = { enabled ->
+                        if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            viewModel.setProtectionEnabled(enabled)
+                        }
+                    },
                     viewModel = viewModel
                 )
             }
@@ -168,16 +200,20 @@ fun FocusLockScreen(
 @Composable
 private fun ActiveEnforcementPanel(
     uiState: ShieldUiState,
+    isServiceRunning: Boolean,
+    notificationDeniedHint: Boolean,
     detectedBrowsers: List<AppInfo>,
     installedNonSystemApps: List<AppInfo>,
+    onProtectionToggle: (Boolean) -> Unit,
     viewModel: ShieldViewModel
 ) {
+    val context = LocalContext.current
     var showBrowserDropdown by remember { mutableStateOf(false) }
     var showUninstallWarningDialog by remember { mutableStateOf(false) }
     var showAllowListPicker by remember { mutableStateOf(false) }
     var showCustomBlocklistPicker by remember { mutableStateOf(false) }
 
-    // Protection Enabled Switch
+    // Protection Enabled Switch Card
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -195,7 +231,16 @@ private fun ActiveEnforcementPanel(
                 )
                 Switch(
                     checked = uiState.enforcementEnabled,
-                    onCheckedChange = { viewModel.setProtectionEnabled(it) }
+                    onCheckedChange = { onProtectionToggle(it) }
+                )
+            }
+
+            if (notificationDeniedHint) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.hint_notification_permission_denied),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
                 )
             }
 
@@ -334,6 +379,65 @@ private fun ActiveEnforcementPanel(
                     Text(stringResource(R.string.btn_custom_blocklist))
                 }
             }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Background Protection Status Card
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.card_bg_protection_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            val serviceStatusText = if (isServiceRunning) stringResource(R.string.service_running) else stringResource(R.string.service_stopped)
+            Text(
+                text = stringResource(R.string.label_service_status, serviceStatusText),
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            val scanFormatted = if (uiState.lastEnforcementAt > 0L) {
+                SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(uiState.lastEnforcementAt))
+            } else {
+                stringResource(R.string.time_never)
+            }
+            Text(
+                text = stringResource(R.string.label_last_scan, scanFormatted),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = {
+                    try {
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.btn_allow_bg_activity))
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = stringResource(R.string.help_samsung_bg_limits),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 

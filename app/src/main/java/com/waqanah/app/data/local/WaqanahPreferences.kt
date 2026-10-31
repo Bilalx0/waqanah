@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -69,6 +70,10 @@ class WaqanahPreferences(private val context: Context) {
 
     val uninstalledByWaqanahFlow: Flow<Set<String>> = context.dataStore.data.map { prefs ->
         prefs[KEY_UNINSTALLED_BY_WAQANAH] ?: emptySet()
+    }
+
+    val lastEnforcementAtFlow: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LAST_ENFORCEMENT_AT] ?: 0L
     }
 
     val blockedPackagesFlow: Flow<Set<String>> = hiddenByWaqanahFlow.map { it.keys }
@@ -163,6 +168,12 @@ class WaqanahPreferences(private val context: Context) {
         }
     }
 
+    suspend fun setLastEnforcementAt(timestamp: Long) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LAST_ENFORCEMENT_AT] = timestamp
+        }
+    }
+
     companion object {
         private val KEY_SELECTED_TRANSLATION = stringPreferencesKey("selected_translation")
         private val KEY_SELECTED_RECITER = stringPreferencesKey("selected_reciter")
@@ -174,6 +185,7 @@ class WaqanahPreferences(private val context: Context) {
         private val KEY_HIDE_SYSTEM_BROWSERS = booleanPreferencesKey("hide_system_browsers")
         private val KEY_HIDDEN_BY_WAQANAH = stringSetPreferencesKey("hidden_by_waqanah")
         private val KEY_UNINSTALLED_BY_WAQANAH = stringSetPreferencesKey("uninstalled_by_waqanah")
+        private val KEY_LAST_ENFORCEMENT_AT = longPreferencesKey("last_enforcement_at")
 
         val DEFAULT_BLOCKED_PACKAGES = BuiltInLists.blocklist
     }

@@ -11,6 +11,7 @@ import com.waqanah.app.service.enforcement.AppInfo
 import com.waqanah.app.service.enforcement.EnforcementMode
 import com.waqanah.app.service.enforcement.EnforcementPlan
 import com.waqanah.app.service.enforcement.EnforcementReport
+import com.waqanah.app.service.enforcement.ShieldServiceController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +33,8 @@ data class ShieldUiState(
     val customBlocklist: Set<String> = emptySet(),
     val hideSystemBrowsers: Boolean = false,
     val hiddenByWaqanah: Map<String, String> = emptyMap(),
-    val uninstalledByWaqanah: Set<String> = emptySet()
+    val uninstalledByWaqanah: Set<String> = emptySet(),
+    val lastEnforcementAt: Long = 0L
 )
 
 class ShieldViewModel(application: Application) : AndroidViewModel(application) {
@@ -51,7 +53,8 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
         preferences.customBlocklistFlow,
         preferences.hideSystemBrowsersFlow,
         preferences.hiddenByWaqanahFlow,
-        preferences.uninstalledByWaqanahFlow
+        preferences.uninstalledByWaqanahFlow,
+        preferences.lastEnforcementAtFlow
     ) { args: Array<Any?> ->
         @Suppress("UNCHECKED_CAST")
         ShieldUiState(
@@ -63,7 +66,8 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
             customBlocklist = args[5] as Set<String>,
             hideSystemBrowsers = args[6] as Boolean,
             hiddenByWaqanah = args[7] as Map<String, String>,
-            uninstalledByWaqanah = args[8] as Set<String>
+            uninstalledByWaqanah = args[8] as Set<String>,
+            lastEnforcementAt = args[9] as Long
         )
     }.stateIn(
         scope = viewModelScope,
@@ -90,6 +94,9 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
     fun refreshStatus() {
         deviceOwnerManager.refresh()
         loadScannedAppLists()
+        viewModelScope.launch(Dispatchers.Default) {
+            ShieldServiceController.sync(app)
+        }
     }
 
     private fun loadScannedAppLists() {
@@ -109,6 +116,7 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
                 val report = enforcementManager.disableAndRelease()
                 emitReleaseSummary(report)
             }
+            ShieldServiceController.sync(app)
             loadScannedAppLists()
         }
     }
@@ -157,6 +165,7 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val report = enforcementManager.enforceNow()
             emitApplySummary(report)
+            ShieldServiceController.sync(app)
             loadScannedAppLists()
         }
     }

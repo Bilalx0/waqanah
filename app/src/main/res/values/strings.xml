@@ -84,6 +84,29 @@
     <string name="notification_shield_title">Waqanah Shield active</string>
     <string name="notification_shield_text">%1$d apps hidden · last scan %2$s</string>
 
+    <!-- Step 4 Hardening System UI -->
+    <string name="card_hardening_title">System hardening</string>
+    <string name="policy_uninstall_blocked">Uninstall Protection</string>
+    <string name="policy_force_stop_blocked">Force-Stop Protection</string>
+    <string name="policy_safe_boot_blocked">Safe Boot Restriction</string>
+    <string name="policy_vpn_config_blocked">VPN Configuration Restriction</string>
+    <string name="policy_date_time_locked">Automatic Date &amp; Time Lock</string>
+    <string name="policy_private_dns_locked">Private DNS Security Filtering</string>
+    <string name="state_applied">Applied ✅</string>
+    <string name="state_unchanged">Unchanged ✅</string>
+    <string name="state_released">Released ⚪</string>
+    <string name="state_unsupported">Not supported on this Android version ⚠️</string>
+    <string name="state_failed">Failed: %1$s ❌</string>
+    <string name="label_dns_provider">Private DNS Security Filter</string>
+    <string name="dns_family">Family Filter (CleanBrowsing Family)</string>
+    <string name="dns_adult">Adult Filter (CleanBrowsing Adult)</string>
+    <string name="dns_custom">Custom DNS Host</string>
+    <string name="hint_custom_dns">Enter Private DNS Hostname (e.g. family-filter-dns.cleanbrowsing.org)</string>
+    <string name="error_invalid_dns">Invalid DNS hostname format. Must be a bare domain name (e.g. example.org).</string>
+    <string name="btn_reapply_now">Re-apply now</string>
+    <string name="hint_dns_bypass">Apps or browsers with their own secure DNS can bypass this filter.</string>
+    <string name="hint_dns_network">If a network blocks Private DNS, internet may not work until Protection is turned off.</string>
+
     <!-- One-shot Messages -->
     <string name="msg_apply_summary">Enforcement complete: %1$d applied, %2$d unchanged, %3$d failed</string>
     <string name="msg_release_summary">Protection disabled: %1$d restored, %2$d failed</string>

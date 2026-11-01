@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -71,6 +72,11 @@ import com.waqanah.app.service.admin.DeviceOwnerStatus
 import com.waqanah.app.service.enforcement.AppInfo
 import com.waqanah.app.service.enforcement.EnforcementMode
 import com.waqanah.app.service.enforcement.ShieldService
+import com.waqanah.app.service.hardening.DnsHostValidator
+import com.waqanah.app.service.hardening.DnsProvider
+import com.waqanah.app.service.hardening.PolicyId
+import com.waqanah.app.service.hardening.PolicyResult
+import com.waqanah.app.service.hardening.PolicyState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -84,6 +90,7 @@ fun FocusLockScreen(
     val previewPlan by viewModel.previewPlan.collectAsState()
     val detectedBrowsers by viewModel.detectedBrowsers.collectAsState()
     val installedNonSystemApps by viewModel.installedNonSystemApps.collectAsState()
+    val hardeningResults by viewModel.hardeningResults.collectAsState()
     val isServiceRunning by ShieldService.running.collectAsState()
     val context = LocalContext.current
 
@@ -151,6 +158,7 @@ fun FocusLockScreen(
                     notificationDeniedHint = notificationDeniedHint,
                     detectedBrowsers = detectedBrowsers,
                     installedNonSystemApps = installedNonSystemApps,
+                    hardeningResults = hardeningResults,
                     onProtectionToggle = { enabled ->
                         if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -204,6 +212,7 @@ private fun ActiveEnforcementPanel(
     notificationDeniedHint: Boolean,
     detectedBrowsers: List<AppInfo>,
     installedNonSystemApps: List<AppInfo>,
+    hardeningResults: List<PolicyResult>,
     onProtectionToggle: (Boolean) -> Unit,
     viewModel: ShieldViewModel
 ) {
@@ -379,6 +388,126 @@ private fun ActiveEnforcementPanel(
                     Text(stringResource(R.string.btn_custom_blocklist))
                 }
             }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // System Hardening Card
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.card_hardening_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Hardening policy status rows
+            val policyLabels = mapOf(
+                PolicyId.UNINSTALL_BLOCKED to stringResource(R.string.policy_uninstall_blocked),
+                PolicyId.FORCE_STOP_BLOCKED to stringResource(R.string.policy_force_stop_blocked),
+                PolicyId.SAFE_BOOT_BLOCKED to stringResource(R.string.policy_safe_boot_blocked),
+                PolicyId.VPN_CONFIG_BLOCKED to stringResource(R.string.policy_vpn_config_blocked),
+                PolicyId.DATE_TIME_LOCKED to stringResource(R.string.policy_date_time_locked),
+                PolicyId.PRIVATE_DNS_LOCKED to stringResource(R.string.policy_private_dns_locked)
+            )
+
+            policyLabels.forEach { (id, label) ->
+                val result = hardeningResults.find { it.id == id }
+                val stateText = when (result?.state) {
+                    PolicyState.APPLIED -> stringResource(R.string.state_applied)
+                    PolicyState.UNCHANGED -> stringResource(R.string.state_unchanged)
+                    PolicyState.RELEASED -> stringResource(R.string.state_released)
+                    PolicyState.UNSUPPORTED -> stringResource(R.string.state_unsupported)
+                    PolicyState.FAILED -> stringResource(R.string.state_failed, result.message ?: "")
+                    null -> stringResource(R.string.state_released)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    Text(text = stateText, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Private DNS Provider Radio Buttons
+            Text(
+                text = stringResource(R.string.label_dns_provider),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = uiState.dnsProvider == DnsProvider.FAMILY,
+                    onClick = { viewModel.setDnsProvider(DnsProvider.FAMILY) }
+                )
+                Text(text = stringResource(R.string.dns_family), style = MaterialTheme.typography.bodySmall)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = uiState.dnsProvider == DnsProvider.ADULT,
+                    onClick = { viewModel.setDnsProvider(DnsProvider.ADULT) }
+                )
+                Text(text = stringResource(R.string.dns_adult), style = MaterialTheme.typography.bodySmall)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = uiState.dnsProvider == DnsProvider.CUSTOM,
+                    onClick = { viewModel.setDnsProvider(DnsProvider.CUSTOM) }
+                )
+                Text(text = stringResource(R.string.dns_custom), style = MaterialTheme.typography.bodySmall)
+            }
+
+            if (uiState.dnsProvider == DnsProvider.CUSTOM) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = uiState.customDnsHost,
+                    onValueChange = { viewModel.setCustomDnsHost(it) },
+                    label = { Text(stringResource(R.string.hint_custom_dns)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (uiState.customDnsHost.isNotBlank() && !DnsHostValidator.isValid(uiState.customDnsHost)) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.error_invalid_dns),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = { viewModel.scanAndApplyNow() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.btn_reapply_now))
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = stringResource(R.string.hint_dns_bypass),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.hint_dns_network),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 

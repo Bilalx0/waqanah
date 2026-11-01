@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.waqanah.app.service.enforcement.BuiltInLists
 import com.waqanah.app.service.enforcement.EnforcementMode
+import com.waqanah.app.service.hardening.DnsProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -74,6 +75,19 @@ class WaqanahPreferences(private val context: Context) {
 
     val lastEnforcementAtFlow: Flow<Long> = context.dataStore.data.map { prefs ->
         prefs[KEY_LAST_ENFORCEMENT_AT] ?: 0L
+    }
+
+    val dnsProviderFlow: Flow<DnsProvider> = context.dataStore.data.map { prefs ->
+        val name = prefs[KEY_DNS_PROVIDER] ?: DnsProvider.FAMILY.name
+        try {
+            DnsProvider.valueOf(name)
+        } catch (_: Exception) {
+            DnsProvider.FAMILY
+        }
+    }
+
+    val customDnsHostFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CUSTOM_DNS_HOST] ?: ""
     }
 
     val blockedPackagesFlow: Flow<Set<String>> = hiddenByWaqanahFlow.map { it.keys }
@@ -174,6 +188,18 @@ class WaqanahPreferences(private val context: Context) {
         }
     }
 
+    suspend fun setDnsProvider(provider: DnsProvider) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_DNS_PROVIDER] = provider.name
+        }
+    }
+
+    suspend fun setCustomDnsHost(host: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_CUSTOM_DNS_HOST] = host
+        }
+    }
+
     companion object {
         private val KEY_SELECTED_TRANSLATION = stringPreferencesKey("selected_translation")
         private val KEY_SELECTED_RECITER = stringPreferencesKey("selected_reciter")
@@ -186,6 +212,8 @@ class WaqanahPreferences(private val context: Context) {
         private val KEY_HIDDEN_BY_WAQANAH = stringSetPreferencesKey("hidden_by_waqanah")
         private val KEY_UNINSTALLED_BY_WAQANAH = stringSetPreferencesKey("uninstalled_by_waqanah")
         private val KEY_LAST_ENFORCEMENT_AT = longPreferencesKey("last_enforcement_at")
+        private val KEY_DNS_PROVIDER = stringPreferencesKey("dns_provider")
+        private val KEY_CUSTOM_DNS_HOST = stringPreferencesKey("custom_dns_host")
 
         val DEFAULT_BLOCKED_PACKAGES = BuiltInLists.blocklist
     }

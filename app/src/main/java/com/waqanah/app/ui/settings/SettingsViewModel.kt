@@ -13,6 +13,7 @@ import com.waqanah.app.domain.usecase.GetRecitersListUseCase
 import com.waqanah.app.domain.usecase.GetTranslationsListUseCase
 import com.waqanah.app.service.admin.DeviceOwnerManager
 import com.waqanah.app.service.admin.DeviceOwnerStatus
+import com.waqanah.app.service.enforcement.ShieldServiceController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,8 +33,10 @@ data class SettingsUiState(
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val app = application as WaqanahApplication
     private val preferences = WaqanahPreferences(application)
-    val deviceOwnerManager: DeviceOwnerManager = (application as WaqanahApplication).deviceOwnerManager
+    val deviceOwnerManager: DeviceOwnerManager = app.deviceOwnerManager
+    private val enforcementManager = app.enforcementManager
 
     private val retrofit = Retrofit.Builder()
         .baseUrl(QuranApiService.BASE_URL)
@@ -106,7 +109,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun removeDeviceOwnerDebug() {
         if (BuildConfig.DEBUG) {
-            deviceOwnerManager.clearDeviceOwnerApp()
+            viewModelScope.launch {
+                enforcementManager.disableAndRelease()
+                ShieldServiceController.sync(app)
+                deviceOwnerManager.clearDeviceOwnerApp()
+            }
         }
     }
 

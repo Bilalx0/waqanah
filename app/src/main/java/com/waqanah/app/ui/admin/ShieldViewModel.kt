@@ -12,6 +12,8 @@ import com.waqanah.app.service.enforcement.EnforcementMode
 import com.waqanah.app.service.enforcement.EnforcementPlan
 import com.waqanah.app.service.enforcement.EnforcementReport
 import com.waqanah.app.service.enforcement.ShieldServiceController
+import com.waqanah.app.service.hardening.DnsProvider
+import com.waqanah.app.service.hardening.PolicyResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +36,9 @@ data class ShieldUiState(
     val hideSystemBrowsers: Boolean = false,
     val hiddenByWaqanah: Map<String, String> = emptyMap(),
     val uninstalledByWaqanah: Set<String> = emptySet(),
-    val lastEnforcementAt: Long = 0L
+    val lastEnforcementAt: Long = 0L,
+    val dnsProvider: DnsProvider = DnsProvider.FAMILY,
+    val customDnsHost: String = ""
 )
 
 class ShieldViewModel(application: Application) : AndroidViewModel(application) {
@@ -43,6 +47,8 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
     val deviceOwnerManager: DeviceOwnerManager = app.deviceOwnerManager
     private val enforcementManager = app.enforcementManager
     private val preferences = WaqanahPreferences(application)
+
+    val hardeningResults: StateFlow<List<PolicyResult>> = enforcementManager.hardeningResults
 
     val uiState: StateFlow<ShieldUiState> = combine(
         deviceOwnerManager.status,
@@ -54,7 +60,9 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
         preferences.hideSystemBrowsersFlow,
         preferences.hiddenByWaqanahFlow,
         preferences.uninstalledByWaqanahFlow,
-        preferences.lastEnforcementAtFlow
+        preferences.lastEnforcementAtFlow,
+        preferences.dnsProviderFlow,
+        preferences.customDnsHostFlow
     ) { args: Array<Any?> ->
         @Suppress("UNCHECKED_CAST")
         ShieldUiState(
@@ -67,7 +75,9 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
             hideSystemBrowsers = args[6] as Boolean,
             hiddenByWaqanah = args[7] as Map<String, String>,
             uninstalledByWaqanah = args[8] as Set<String>,
-            lastEnforcementAt = args[9] as Long
+            lastEnforcementAt = args[9] as Long,
+            dnsProvider = args[10] as DnsProvider,
+            customDnsHost = args[11] as String
         )
     }.stateIn(
         scope = viewModelScope,
@@ -136,6 +146,26 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
     fun setHideSystemBrowsers(hide: Boolean) {
         viewModelScope.launch {
             preferences.setHideSystemBrowsers(hide)
+        }
+    }
+
+    fun setDnsProvider(provider: DnsProvider) {
+        viewModelScope.launch {
+            preferences.setDnsProvider(provider)
+            if (uiState.value.enforcementEnabled) {
+                val report = enforcementManager.enforceNow()
+                emitApplySummary(report)
+            }
+        }
+    }
+
+    fun setCustomDnsHost(host: String) {
+        viewModelScope.launch {
+            preferences.setCustomDnsHost(host)
+            if (uiState.value.enforcementEnabled) {
+                val report = enforcementManager.enforceNow()
+                emitApplySummary(report)
+            }
         }
     }
 

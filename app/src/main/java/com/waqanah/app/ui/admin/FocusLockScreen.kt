@@ -51,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -221,6 +222,8 @@ private fun ActiveEnforcementPanel(
     var showUninstallWarningDialog by remember { mutableStateOf(false) }
     var showAllowListPicker by remember { mutableStateOf(false) }
     var showCustomBlocklistPicker by remember { mutableStateOf(false) }
+
+    var customDnsInput by rememberSaveable(uiState.customDnsHost) { mutableStateOf(uiState.customDnsHost) }
 
     // Protection Enabled Switch Card
     Card(
@@ -418,13 +421,18 @@ private fun ActiveEnforcementPanel(
 
             policyLabels.forEach { (id, label) ->
                 val result = hardeningResults.find { it.id == id }
-                val stateText = when (result?.state) {
-                    PolicyState.APPLIED -> stringResource(R.string.state_applied)
-                    PolicyState.UNCHANGED -> stringResource(R.string.state_unchanged)
-                    PolicyState.RELEASED -> stringResource(R.string.state_released)
-                    PolicyState.UNSUPPORTED -> stringResource(R.string.state_unsupported)
-                    PolicyState.FAILED -> stringResource(R.string.state_failed, result.message ?: "")
-                    null -> stringResource(R.string.state_released)
+                val stateText = if (hardeningResults.isEmpty()) {
+                    stringResource(R.string.state_checking)
+                } else {
+                    when (result?.state) {
+                        PolicyState.APPLIED -> stringResource(R.string.state_applied)
+                        PolicyState.UNCHANGED -> stringResource(R.string.state_unchanged)
+                        PolicyState.RELEASED -> stringResource(R.string.state_released)
+                        PolicyState.NOT_APPLIED -> stringResource(R.string.state_not_applied)
+                        PolicyState.UNSUPPORTED -> stringResource(R.string.state_unsupported)
+                        PolicyState.FAILED -> stringResource(R.string.state_failed, result.message ?: "")
+                        null -> stringResource(R.string.state_not_applied)
+                    }
                 }
                 Row(
                     modifier = Modifier
@@ -471,18 +479,26 @@ private fun ActiveEnforcementPanel(
             if (uiState.dnsProvider == DnsProvider.CUSTOM) {
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = uiState.customDnsHost,
-                    onValueChange = { viewModel.setCustomDnsHost(it) },
+                    value = customDnsInput,
+                    onValueChange = { customDnsInput = it },
                     label = { Text(stringResource(R.string.hint_custom_dns)) },
                     modifier = Modifier.fillMaxWidth()
                 )
-                if (uiState.customDnsHost.isNotBlank() && !DnsHostValidator.isValid(uiState.customDnsHost)) {
+                if (customDnsInput.isNotBlank() && !DnsHostValidator.isValid(customDnsInput)) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = stringResource(R.string.error_invalid_dns),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { viewModel.setCustomDnsHost(customDnsInput) },
+                    enabled = DnsHostValidator.isValid(customDnsInput),
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text(stringResource(R.string.btn_save))
                 }
             }
 

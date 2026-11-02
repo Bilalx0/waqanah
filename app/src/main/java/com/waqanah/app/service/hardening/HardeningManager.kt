@@ -25,112 +25,114 @@ class HardeningManager(
             }
         }
 
-        val results = mutableListOf<PolicyResult>()
+        val supported = PolicyCatalog.supported(Build.VERSION.SDK_INT)
         val admin = deviceOwnerManager.adminComponent
 
-        // 1. UNINSTALL_BLOCKED
-        results.add(tryPolicy(PolicyId.UNINSTALL_BLOCKED) {
-            if (devicePolicyManager.isUninstallBlocked(admin, ownPackage)) {
-                PolicyResult(PolicyId.UNINSTALL_BLOCKED, PolicyState.UNCHANGED)
+        return PolicyId.entries.map { id ->
+            if (!supported.contains(id)) {
+                PolicyResult(id, PolicyState.UNSUPPORTED, getUnsupportedMessage(id))
             } else {
-                devicePolicyManager.setUninstallBlocked(admin, ownPackage, true)
-                PolicyResult(PolicyId.UNINSTALL_BLOCKED, PolicyState.APPLIED)
-            }
-        })
-
-        // 2. FORCE_STOP_BLOCKED
-        results.add(tryPolicy(PolicyId.FORCE_STOP_BLOCKED) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val disabledPackages = devicePolicyManager.getUserControlDisabledPackages(admin)
-                if (disabledPackages.contains(ownPackage)) {
-                    PolicyResult(PolicyId.FORCE_STOP_BLOCKED, PolicyState.UNCHANGED)
-                } else {
-                    devicePolicyManager.setUserControlDisabledPackages(admin, listOf(ownPackage))
-                    PolicyResult(PolicyId.FORCE_STOP_BLOCKED, PolicyState.APPLIED)
-                }
-            } else {
-                PolicyResult(PolicyId.FORCE_STOP_BLOCKED, PolicyState.UNSUPPORTED, "Requires Android 11+ (API 30)")
-            }
-        })
-
-        // 3. SAFE_BOOT_BLOCKED
-        results.add(tryPolicy(PolicyId.SAFE_BOOT_BLOCKED) {
-            val userRestrictions = devicePolicyManager.getUserRestrictions(admin)
-            if (userRestrictions.getBoolean(UserManager.DISALLOW_SAFE_BOOT)) {
-                PolicyResult(PolicyId.SAFE_BOOT_BLOCKED, PolicyState.UNCHANGED)
-            } else {
-                devicePolicyManager.addUserRestriction(admin, UserManager.DISALLOW_SAFE_BOOT)
-                PolicyResult(PolicyId.SAFE_BOOT_BLOCKED, PolicyState.APPLIED)
-            }
-        })
-
-        // 4. VPN_CONFIG_BLOCKED
-        results.add(tryPolicy(PolicyId.VPN_CONFIG_BLOCKED) {
-            val userRestrictions = devicePolicyManager.getUserRestrictions(admin)
-            if (userRestrictions.getBoolean(UserManager.DISALLOW_CONFIG_VPN)) {
-                PolicyResult(PolicyId.VPN_CONFIG_BLOCKED, PolicyState.UNCHANGED)
-            } else {
-                devicePolicyManager.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_VPN)
-                PolicyResult(PolicyId.VPN_CONFIG_BLOCKED, PolicyState.APPLIED)
-            }
-        })
-
-        // 5. DATE_TIME_LOCKED
-        results.add(tryPolicy(PolicyId.DATE_TIME_LOCKED) {
-            val userRestrictions = devicePolicyManager.getUserRestrictions(admin)
-            val isRestricted = userRestrictions.getBoolean(UserManager.DISALLOW_CONFIG_DATE_TIME)
-
-            if (!isRestricted) {
-                devicePolicyManager.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME)
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                devicePolicyManager.setAutoTimeEnabled(admin, true)
-                devicePolicyManager.setAutoTimeZoneEnabled(admin, true)
-            } else {
-                @Suppress("DEPRECATION")
-                devicePolicyManager.setAutoTimeRequired(admin, true)
-            }
-
-            if (isRestricted) {
-                PolicyResult(PolicyId.DATE_TIME_LOCKED, PolicyState.UNCHANGED)
-            } else {
-                PolicyResult(PolicyId.DATE_TIME_LOCKED, PolicyState.APPLIED)
-            }
-        })
-
-        // 6. PRIVATE_DNS_LOCKED
-        results.add(tryPolicy(PolicyId.PRIVATE_DNS_LOCKED) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val currentMode = devicePolicyManager.getGlobalPrivateDnsMode(admin)
-                val currentHost = devicePolicyManager.getGlobalPrivateDnsHost(admin)
-
-                if (currentMode == DevicePolicyManager.PRIVATE_DNS_MODE_PROVIDER_HOSTNAME && currentHost == dnsHost) {
-                    val userRestrictions = devicePolicyManager.getUserRestrictions(admin)
-                    if (!userRestrictions.getBoolean(UserManager.DISALLOW_CONFIG_PRIVATE_DNS)) {
-                        devicePolicyManager.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
-                    }
-                    PolicyResult(PolicyId.PRIVATE_DNS_LOCKED, PolicyState.UNCHANGED)
-                } else {
-                    val dnsResult = devicePolicyManager.setGlobalPrivateDnsModeSpecifiedHost(admin, dnsHost)
-                    if (dnsResult == DevicePolicyManager.PRIVATE_DNS_SET_NO_ERROR) {
-                        devicePolicyManager.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
-                        PolicyResult(PolicyId.PRIVATE_DNS_LOCKED, PolicyState.APPLIED)
-                    } else {
-                        val errMsg = when (dnsResult) {
-                            DevicePolicyManager.PRIVATE_DNS_SET_ERROR_HOST_NOT_SERVING -> "Private DNS host not serving"
-                            DevicePolicyManager.PRIVATE_DNS_SET_ERROR_FAILURE_SETTING -> "Failed setting Private DNS (check network)"
-                            else -> "Private DNS error code $dnsResult"
+                tryPolicy(id) {
+                    when (id) {
+                        PolicyId.UNINSTALL_BLOCKED -> {
+                            if (devicePolicyManager.isUninstallBlocked(admin, ownPackage)) {
+                                PolicyResult(id, PolicyState.UNCHANGED)
+                            } else {
+                                devicePolicyManager.setUninstallBlocked(admin, ownPackage, true)
+                                PolicyResult(id, PolicyState.APPLIED)
+                            }
                         }
-                        PolicyResult(PolicyId.PRIVATE_DNS_LOCKED, PolicyState.FAILED, errMsg)
+
+                        PolicyId.FORCE_STOP_BLOCKED -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                val disabledPackages = devicePolicyManager.getUserControlDisabledPackages(admin)
+                                if (disabledPackages.contains(ownPackage)) {
+                                    PolicyResult(id, PolicyState.UNCHANGED)
+                                } else {
+                                    devicePolicyManager.setUserControlDisabledPackages(admin, listOf(ownPackage))
+                                    PolicyResult(id, PolicyState.APPLIED)
+                                }
+                            } else {
+                                PolicyResult(id, PolicyState.UNSUPPORTED, getUnsupportedMessage(id))
+                            }
+                        }
+
+                        PolicyId.SAFE_BOOT_BLOCKED -> {
+                            val userRestrictions = devicePolicyManager.getUserRestrictions(admin)
+                            if (userRestrictions.getBoolean(UserManager.DISALLOW_SAFE_BOOT)) {
+                                PolicyResult(id, PolicyState.UNCHANGED)
+                            } else {
+                                devicePolicyManager.addUserRestriction(admin, UserManager.DISALLOW_SAFE_BOOT)
+                                PolicyResult(id, PolicyState.APPLIED)
+                            }
+                        }
+
+                        PolicyId.VPN_CONFIG_BLOCKED -> {
+                            val userRestrictions = devicePolicyManager.getUserRestrictions(admin)
+                            if (userRestrictions.getBoolean(UserManager.DISALLOW_CONFIG_VPN)) {
+                                PolicyResult(id, PolicyState.UNCHANGED)
+                            } else {
+                                devicePolicyManager.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_VPN)
+                                PolicyResult(id, PolicyState.APPLIED)
+                            }
+                        }
+
+                        PolicyId.DATE_TIME_LOCKED -> {
+                            val userRestrictions = devicePolicyManager.getUserRestrictions(admin)
+                            val isRestricted = userRestrictions.getBoolean(UserManager.DISALLOW_CONFIG_DATE_TIME)
+
+                            if (!isRestricted) {
+                                devicePolicyManager.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME)
+                            }
+
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                devicePolicyManager.setAutoTimeEnabled(admin, true)
+                                devicePolicyManager.setAutoTimeZoneEnabled(admin, true)
+                            } else {
+                                @Suppress("DEPRECATION")
+                                devicePolicyManager.setAutoTimeRequired(admin, true)
+                            }
+
+                            if (isRestricted) {
+                                PolicyResult(id, PolicyState.UNCHANGED)
+                            } else {
+                                PolicyResult(id, PolicyState.APPLIED)
+                            }
+                        }
+
+                        PolicyId.PRIVATE_DNS_LOCKED -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                val currentMode = devicePolicyManager.getGlobalPrivateDnsMode(admin)
+                                val currentHost = devicePolicyManager.getGlobalPrivateDnsHost(admin)
+
+                                if (currentMode == DevicePolicyManager.PRIVATE_DNS_MODE_PROVIDER_HOSTNAME && currentHost == dnsHost) {
+                                    val userRestrictions = devicePolicyManager.getUserRestrictions(admin)
+                                    if (!userRestrictions.getBoolean(UserManager.DISALLOW_CONFIG_PRIVATE_DNS)) {
+                                        devicePolicyManager.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
+                                    }
+                                    PolicyResult(id, PolicyState.UNCHANGED)
+                                } else {
+                                    val dnsResult = devicePolicyManager.setGlobalPrivateDnsModeSpecifiedHost(admin, dnsHost)
+                                    if (dnsResult == DevicePolicyManager.PRIVATE_DNS_SET_NO_ERROR) {
+                                        devicePolicyManager.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
+                                        PolicyResult(id, PolicyState.APPLIED)
+                                    } else {
+                                        val errMsg = when (dnsResult) {
+                                            DevicePolicyManager.PRIVATE_DNS_SET_ERROR_HOST_NOT_SERVING -> "Private DNS host not serving"
+                                            DevicePolicyManager.PRIVATE_DNS_SET_ERROR_FAILURE_SETTING -> "Failed setting Private DNS (check network)"
+                                            else -> "Private DNS error code $dnsResult"
+                                        }
+                                        PolicyResult(id, PolicyState.FAILED, errMsg)
+                                    }
+                                }
+                            } else {
+                                PolicyResult(id, PolicyState.UNSUPPORTED, getUnsupportedMessage(id))
+                            }
+                        }
                     }
                 }
-            } else {
-                PolicyResult(PolicyId.PRIVATE_DNS_LOCKED, PolicyState.UNSUPPORTED, "Requires Android 10+ (API 29)")
             }
-        })
-
-        return results
+        }
     }
 
     suspend fun releaseAll(): List<PolicyResult> {
@@ -141,55 +143,124 @@ class HardeningManager(
             }
         }
 
-        val results = mutableListOf<PolicyResult>()
+        val supported = PolicyCatalog.supported(Build.VERSION.SDK_INT)
         val admin = deviceOwnerManager.adminComponent
 
-        // 1. UNINSTALL_BLOCKED
-        results.add(tryPolicy(PolicyId.UNINSTALL_BLOCKED) {
-            devicePolicyManager.setUninstallBlocked(admin, ownPackage, false)
-            PolicyResult(PolicyId.UNINSTALL_BLOCKED, PolicyState.RELEASED)
-        })
-
-        // 2. FORCE_STOP_BLOCKED
-        results.add(tryPolicy(PolicyId.FORCE_STOP_BLOCKED) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                devicePolicyManager.setUserControlDisabledPackages(admin, emptyList())
-                PolicyResult(PolicyId.FORCE_STOP_BLOCKED, PolicyState.RELEASED)
+        return PolicyId.entries.map { id ->
+            if (!supported.contains(id)) {
+                PolicyResult(id, PolicyState.UNSUPPORTED, getUnsupportedMessage(id))
             } else {
-                PolicyResult(PolicyId.FORCE_STOP_BLOCKED, PolicyState.UNSUPPORTED)
+                tryPolicy(id) {
+                    when (id) {
+                        PolicyId.UNINSTALL_BLOCKED -> {
+                            devicePolicyManager.setUninstallBlocked(admin, ownPackage, false)
+                            PolicyResult(id, PolicyState.RELEASED)
+                        }
+
+                        PolicyId.FORCE_STOP_BLOCKED -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                devicePolicyManager.setUserControlDisabledPackages(admin, emptyList())
+                                PolicyResult(id, PolicyState.RELEASED)
+                            } else {
+                                PolicyResult(id, PolicyState.UNSUPPORTED, getUnsupportedMessage(id))
+                            }
+                        }
+
+                        PolicyId.SAFE_BOOT_BLOCKED -> {
+                            devicePolicyManager.clearUserRestriction(admin, UserManager.DISALLOW_SAFE_BOOT)
+                            PolicyResult(id, PolicyState.RELEASED)
+                        }
+
+                        PolicyId.VPN_CONFIG_BLOCKED -> {
+                            devicePolicyManager.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_VPN)
+                            PolicyResult(id, PolicyState.RELEASED)
+                        }
+
+                        PolicyId.DATE_TIME_LOCKED -> {
+                            devicePolicyManager.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME)
+                            PolicyResult(id, PolicyState.RELEASED)
+                        }
+
+                        PolicyId.PRIVATE_DNS_LOCKED -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                devicePolicyManager.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
+                                devicePolicyManager.setGlobalPrivateDnsModeOpportunistic(admin)
+                                PolicyResult(id, PolicyState.RELEASED)
+                            } else {
+                                PolicyResult(id, PolicyState.UNSUPPORTED, getUnsupportedMessage(id))
+                            }
+                        }
+                    }
+                }
             }
-        })
+        }
+    }
 
-        // 3. SAFE_BOOT_BLOCKED
-        results.add(tryPolicy(PolicyId.SAFE_BOOT_BLOCKED) {
-            devicePolicyManager.clearUserRestriction(admin, UserManager.DISALLOW_SAFE_BOOT)
-            PolicyResult(PolicyId.SAFE_BOOT_BLOCKED, PolicyState.RELEASED)
-        })
+    suspend fun inspect(dnsHost: String): List<PolicyResult> {
+        if (!deviceOwnerManager.isDeviceOwner()) {
+            return PolicyId.entries.map { id ->
+                PolicyResult(id, PolicyState.NOT_APPLIED)
+            }
+        }
 
-        // 4. VPN_CONFIG_BLOCKED
-        results.add(tryPolicy(PolicyId.VPN_CONFIG_BLOCKED) {
-            devicePolicyManager.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_VPN)
-            PolicyResult(PolicyId.VPN_CONFIG_BLOCKED, PolicyState.RELEASED)
-        })
+        val supported = PolicyCatalog.supported(Build.VERSION.SDK_INT)
+        val admin = deviceOwnerManager.adminComponent
 
-        // 5. DATE_TIME_LOCKED
-        results.add(tryPolicy(PolicyId.DATE_TIME_LOCKED) {
-            devicePolicyManager.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME)
-            PolicyResult(PolicyId.DATE_TIME_LOCKED, PolicyState.RELEASED)
-        })
-
-        // 6. PRIVATE_DNS_LOCKED
-        results.add(tryPolicy(PolicyId.PRIVATE_DNS_LOCKED) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                devicePolicyManager.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
-                devicePolicyManager.setGlobalPrivateDnsModeOpportunistic(admin)
-                PolicyResult(PolicyId.PRIVATE_DNS_LOCKED, PolicyState.RELEASED)
+        return PolicyId.entries.map { id ->
+            if (!supported.contains(id)) {
+                PolicyResult(id, PolicyState.UNSUPPORTED, getUnsupportedMessage(id))
             } else {
-                PolicyResult(PolicyId.PRIVATE_DNS_LOCKED, PolicyState.UNSUPPORTED)
-            }
-        })
+                try {
+                    val isInForce = when (id) {
+                        PolicyId.UNINSTALL_BLOCKED -> {
+                            devicePolicyManager.isUninstallBlocked(admin, ownPackage)
+                        }
 
-        return results
+                        PolicyId.FORCE_STOP_BLOCKED -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                devicePolicyManager.getUserControlDisabledPackages(admin).contains(ownPackage)
+                            } else false
+                        }
+
+                        PolicyId.SAFE_BOOT_BLOCKED -> {
+                            devicePolicyManager.getUserRestrictions(admin).getBoolean(UserManager.DISALLOW_SAFE_BOOT)
+                        }
+
+                        PolicyId.VPN_CONFIG_BLOCKED -> {
+                            devicePolicyManager.getUserRestrictions(admin).getBoolean(UserManager.DISALLOW_CONFIG_VPN)
+                        }
+
+                        PolicyId.DATE_TIME_LOCKED -> {
+                            devicePolicyManager.getUserRestrictions(admin).getBoolean(UserManager.DISALLOW_CONFIG_DATE_TIME)
+                        }
+
+                        PolicyId.PRIVATE_DNS_LOCKED -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                val currentMode = devicePolicyManager.getGlobalPrivateDnsMode(admin)
+                                val currentHost = devicePolicyManager.getGlobalPrivateDnsHost(admin)
+                                currentMode == DevicePolicyManager.PRIVATE_DNS_MODE_PROVIDER_HOSTNAME && currentHost == dnsHost
+                            } else false
+                        }
+                    }
+
+                    if (isInForce) {
+                        PolicyResult(id, PolicyState.APPLIED)
+                    } else {
+                        PolicyResult(id, PolicyState.NOT_APPLIED)
+                    }
+                } catch (e: Exception) {
+                    PolicyResult(id, PolicyState.FAILED, e.localizedMessage ?: "Inspection failed")
+                }
+            }
+        }
+    }
+
+    private fun getUnsupportedMessage(id: PolicyId): String {
+        return when (id) {
+            PolicyId.FORCE_STOP_BLOCKED -> "Requires Android 11+ (API 30)"
+            PolicyId.PRIVATE_DNS_LOCKED -> "Requires Android 10+ (API 29)"
+            else -> "Not supported on this Android version"
+        }
     }
 
     private inline fun tryPolicy(id: PolicyId, block: () -> PolicyResult): PolicyResult {

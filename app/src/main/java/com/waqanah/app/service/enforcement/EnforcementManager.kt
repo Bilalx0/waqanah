@@ -124,6 +124,15 @@ class EnforcementManager(
         }
     }
 
+    suspend fun refreshHardeningStatus(): List<PolicyResult> = withContext(Dispatchers.Default) {
+        val provider = preferences.dnsProviderFlow.first()
+        val customHost = preferences.customDnsHostFlow.first()
+        val effectiveHost = DnsHostValidator.getEffectiveHost(provider, customHost)
+        val hardeningRes = hardening.inspect(effectiveHost)
+        _hardeningResults.value = hardeningRes
+        hardeningRes
+    }
+
     suspend fun getDetectedBrowsers(): List<AppInfo> = withContext(Dispatchers.Default) {
         val browserPkgs = scanner.browserPackages() + BuiltInLists.systemBrowsers
         scanner.installedApps().filter { browserPkgs.contains(it.packageName) }

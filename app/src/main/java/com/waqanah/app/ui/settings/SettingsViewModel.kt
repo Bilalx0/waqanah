@@ -107,12 +107,26 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    private var forceRemoveOwnerAllowed = false
+
     fun removeDeviceOwnerDebug() {
         if (BuildConfig.DEBUG) {
             viewModelScope.launch {
                 enforcementManager.disableAndRelease()
                 ShieldServiceController.sync(app)
-                deviceOwnerManager.clearDeviceOwnerApp()
+
+                val hardening = enforcementManager.hardeningResults.value
+                val failedPolicies = hardening.filter { it.state == com.waqanah.app.service.hardening.PolicyState.FAILED }
+
+                if (failedPolicies.isNotEmpty() && !forceRemoveOwnerAllowed) {
+                    forceRemoveOwnerAllowed = true
+                    val failedNames = failedPolicies.joinToString { it.id.name }
+                    val msg = "Failed to release policies: $failedNames. Press again to force remove Device Owner."
+                    android.widget.Toast.makeText(app, msg, android.widget.Toast.LENGTH_LONG).show()
+                } else {
+                    deviceOwnerManager.clearDeviceOwnerApp()
+                    forceRemoveOwnerAllowed = false
+                }
             }
         }
     }

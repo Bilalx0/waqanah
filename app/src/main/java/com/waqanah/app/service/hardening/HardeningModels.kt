@@ -14,7 +14,8 @@ enum class PolicyState {
     UNCHANGED,
     FAILED,
     UNSUPPORTED,
-    RELEASED
+    RELEASED,
+    NOT_APPLIED
 }
 
 data class PolicyResult(

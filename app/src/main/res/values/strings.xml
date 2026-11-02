@@ -95,6 +95,8 @@
     <string name="state_applied">Applied ✅</string>
     <string name="state_unchanged">Unchanged ✅</string>
     <string name="state_released">Released ⚪</string>
+    <string name="state_not_applied">Not applied ⚪</string>
+    <string name="state_checking">Checking&#8230;</string>
     <string name="state_unsupported">Not supported on this Android version ⚠️</string>
     <string name="state_failed">Failed: %1$s ❌</string>
     <string name="label_dns_provider">Private DNS Security Filter</string>

@@ -99,13 +99,21 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         loadScannedAppLists()
+        refreshHardeningStatus()
     }
 
     fun refreshStatus() {
         deviceOwnerManager.refresh()
         loadScannedAppLists()
+        refreshHardeningStatus()
         viewModelScope.launch(Dispatchers.Default) {
             ShieldServiceController.sync(app)
+        }
+    }
+
+    fun refreshHardeningStatus() {
+        viewModelScope.launch {
+            enforcementManager.refreshHardeningStatus()
         }
     }
 

@@ -12,7 +12,7 @@ object DnsHostValidator {
      * - Total length <= 253
      */
     fun isValid(host: String): Boolean {
-        val trimmed = host.trim()
+        val trimmed = host.trim().lowercase()
         if (trimmed.isEmpty() || trimmed.length > 253) return false
 
         if (trimmed.contains("/") || trimmed.contains(":") || trimmed.contains(" ")) return false
@@ -23,7 +23,7 @@ object DnsHostValidator {
         val labels = trimmed.split(".")
         if (labels.size < 2) return false
 
-        val labelRegex = Regex("^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$")
+        val labelRegex = Regex("^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
         for (label in labels) {
             if (label.isEmpty() || label.length > 63 || !labelRegex.matches(label)) {
                 return false
@@ -34,10 +34,10 @@ object DnsHostValidator {
 
     fun getEffectiveHost(provider: DnsProvider, customHost: String): String {
         return when (provider) {
-            DnsProvider.FAMILY, DnsProvider.ADULT -> provider.host
+            DnsProvider.FAMILY, DnsProvider.ADULT -> provider.host.lowercase()
             DnsProvider.CUSTOM -> {
-                val trimmed = customHost.trim()
-                if (isValid(trimmed)) trimmed else DnsProvider.FAMILY.host
+                val trimmed = customHost.trim().lowercase()
+                if (isValid(trimmed)) trimmed else DnsProvider.FAMILY.host.lowercase()
             }
         }
     }

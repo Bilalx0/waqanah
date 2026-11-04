@@ -112,7 +112,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun removeDeviceOwnerDebug() {
         if (BuildConfig.DEBUG) {
             viewModelScope.launch {
-                enforcementManager.disableAndRelease()
+                enforcementManager.disableAndReleaseForced()
                 ShieldServiceController.sync(app)
 
                 val hardening = enforcementManager.hardeningResults.value

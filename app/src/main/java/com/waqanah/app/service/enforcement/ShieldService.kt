@@ -110,11 +110,13 @@ class ShieldService : Service() {
             // Debounced event collector for package events
             launch {
                 packageEventsFlow.debounce(750L).collect {
+                    app.commitmentManager.isActive()
                     app.enforcementManager.enforceNow()
                 }
             }
 
             // Catch-up scan for apps installed while service was stopped
+            app.commitmentManager.isActive()
             app.enforcementManager.enforceNow()
         }
 

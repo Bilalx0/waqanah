@@ -26,6 +26,7 @@ class EnforcementWorker(
         val isEnabled = preferences.enforcementEnabledFlow.first()
 
         if (isOwner && isEnabled) {
+            app.commitmentManager.isActive()
             app.enforcementManager.enforceNow()
             ShieldServiceController.sync(context)
         }

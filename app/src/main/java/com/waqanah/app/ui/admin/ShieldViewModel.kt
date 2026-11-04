@@ -50,6 +50,12 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
 
     val hardeningResults: StateFlow<List<PolicyResult>> = enforcementManager.hardeningResults
 
+    val lockState: StateFlow<com.waqanah.app.service.lock.LockState> = app.commitmentManager.state.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000L),
+        initialValue = com.waqanah.app.service.lock.LockState()
+    )
+
     val uiState: StateFlow<ShieldUiState> = combine(
         deviceOwnerManager.status,
         preferences.enforcementEnabledFlow,
@@ -126,6 +132,11 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setProtectionEnabled(enabled: Boolean) {
         viewModelScope.launch {
+            if (!enabled && app.commitmentManager.isActive()) {
+                val untilFormatted = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(lockState.value.lockedUntil))
+                _messageEvent.emit(app.getString(com.waqanah.app.R.string.msg_lock_prevents_off, untilFormatted))
+                return@launch
+            }
             preferences.setEnforcementEnabled(enabled)
             if (enabled) {
                 val report = enforcementManager.enforceNow()
@@ -139,26 +150,38 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private suspend fun checkLockAndRefuse(): Boolean {
+        if (app.commitmentManager.isActive()) {
+            _messageEvent.emit(app.getString(com.waqanah.app.R.string.msg_config_frozen_by_lock))
+            return true
+        }
+        return false
+    }
+
     fun setAllowedBrowserPackage(packageName: String?) {
         viewModelScope.launch {
+            if (checkLockAndRefuse()) return@launch
             preferences.setAllowedBrowserPackage(packageName)
         }
     }
 
     fun setEnforcementMode(mode: EnforcementMode) {
         viewModelScope.launch {
+            if (checkLockAndRefuse()) return@launch
             preferences.setEnforcementMode(mode)
         }
     }
 
     fun setHideSystemBrowsers(hide: Boolean) {
         viewModelScope.launch {
+            if (checkLockAndRefuse()) return@launch
             preferences.setHideSystemBrowsers(hide)
         }
     }
 
     fun setDnsProvider(provider: DnsProvider) {
         viewModelScope.launch {
+            if (checkLockAndRefuse()) return@launch
             preferences.setDnsProvider(provider)
             if (uiState.value.enforcementEnabled) {
                 val report = enforcementManager.enforceNow()
@@ -169,6 +192,7 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setCustomDnsHost(host: String) {
         viewModelScope.launch {
+            if (checkLockAndRefuse()) return@launch
             preferences.setCustomDnsHost(host)
             if (uiState.value.enforcementEnabled) {
                 val report = enforcementManager.enforceNow()
@@ -179,13 +203,56 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateAllowList(packages: Set<String>) {
         viewModelScope.launch {
+            if (checkLockAndRefuse()) return@launch
             preferences.updateAllowList(packages)
         }
     }
 
     fun updateCustomBlocklist(packages: Set<String>) {
         viewModelScope.launch {
+            if (app.commitmentManager.isActive()) {
+                val current = uiState.value.customBlocklist
+                if (!packages.containsAll(current)) {
+                    _messageEvent.emit(app.getString(com.waqanah.app.R.string.msg_cannot_remove_blocklist_during_lock))
+                    return@launch
+                }
+            }
             preferences.updateCustomBlocklist(packages)
+        }
+    }
+
+    fun startCommitmentLock(durationMs: Long, pin: String?) {
+        viewModelScope.launch {
+            val enabled = uiState.value.enforcementEnabled
+            val hardening = hardeningResults.value
+            val res = app.commitmentManager.start(durationMs, pin, enabled, hardening)
+            val msg = when (res) {
+                com.waqanah.app.service.lock.StartResult.SUCCESS -> app.getString(com.waqanah.app.R.string.msg_lock_started)
+                com.waqanah.app.service.lock.StartResult.NOT_DEVICE_OWNER -> app.getString(com.waqanah.app.R.string.msg_lock_err_owner)
+                com.waqanah.app.service.lock.StartResult.PROTECTION_OFF -> app.getString(com.waqanah.app.R.string.msg_lock_err_protection)
+                com.waqanah.app.service.lock.StartResult.ALREADY_LOCKED -> app.getString(com.waqanah.app.R.string.msg_lock_err_already)
+                com.waqanah.app.service.lock.StartResult.HARDENING_NOT_APPLIED -> app.getString(com.waqanah.app.R.string.msg_lock_err_hardening)
+                com.waqanah.app.service.lock.StartResult.INVALID_DURATION -> app.getString(com.waqanah.app.R.string.msg_lock_err_duration)
+                com.waqanah.app.service.lock.StartResult.INVALID_PIN -> app.getString(com.waqanah.app.R.string.msg_lock_err_pin)
+            }
+            _messageEvent.emit(msg)
+        }
+    }
+
+    fun releaseCommitmentLock(pin: String) {
+        viewModelScope.launch {
+            val res = app.commitmentManager.releaseWithPin(pin)
+            val msg = when (res) {
+                is com.waqanah.app.service.lock.ReleaseResult.Released -> app.getString(com.waqanah.app.R.string.msg_lock_released)
+                is com.waqanah.app.service.lock.ReleaseResult.WrongPin -> app.getString(com.waqanah.app.R.string.msg_lock_wrong_pin, res.failures)
+                is com.waqanah.app.service.lock.ReleaseResult.LockedOut -> {
+                    val untilStr = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(res.until))
+                    app.getString(com.waqanah.app.R.string.msg_lock_locked_out, untilStr)
+                }
+                com.waqanah.app.service.lock.ReleaseResult.NoPinSet -> app.getString(com.waqanah.app.R.string.msg_lock_no_pin)
+                com.waqanah.app.service.lock.ReleaseResult.NotLocked -> app.getString(com.waqanah.app.R.string.msg_lock_not_locked)
+            }
+            _messageEvent.emit(msg)
         }
     }
 

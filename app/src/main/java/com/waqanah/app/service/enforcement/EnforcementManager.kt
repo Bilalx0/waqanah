@@ -1,11 +1,13 @@
 package com.waqanah.app.service.enforcement
 
 import android.content.Context
+import com.waqanah.app.BuildConfig
 import com.waqanah.app.data.local.WaqanahPreferences
 import com.waqanah.app.service.admin.DeviceOwnerManager
 import com.waqanah.app.service.hardening.DnsHostValidator
 import com.waqanah.app.service.hardening.HardeningManager
 import com.waqanah.app.service.hardening.PolicyResult
+import com.waqanah.app.service.lock.CommitmentManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,10 +16,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class EnforcementManager(
     private val context: Context,
-    private val deviceOwnerManager: DeviceOwnerManager
+    private val deviceOwnerManager: DeviceOwnerManager,
+    private val commitmentManager: CommitmentManager
 ) {
 
     private val preferences = WaqanahPreferences(context)
@@ -65,7 +71,12 @@ class EnforcementManager(
                 )
             }
 
-            val enabled = preferences.enforcementEnabledFlow.first()
+            var enabled = preferences.enforcementEnabledFlow.first()
+            if (commitmentManager.isActive() && !enabled) {
+                preferences.setEnforcementEnabled(true)
+                enabled = true
+            }
+
             if (!enabled) {
                 return@withContext EnforcementReport(
                     applied = emptyList(),
@@ -98,30 +109,54 @@ class EnforcementManager(
 
     suspend fun disableAndRelease(): EnforcementReport = withContext(Dispatchers.Default) {
         enforcementLock.withLock {
-            if (!deviceOwnerManager.isDeviceOwner()) {
+            if (commitmentManager.isActive()) {
+                commitmentManager.noteBlockedOffAttempt()
+                val lockState = commitmentManager.state.first()
+                val untilFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(lockState.lockedUntil))
                 return@withContext EnforcementReport(
                     applied = emptyList(),
                     unchanged = emptyList(),
-                    failed = emptyMap(),
+                    failed = mapOf("lock" to "Locked until $untilFormatted"),
                     skipped = emptyList()
                 )
             }
-
-            preferences.setEnforcementEnabled(false)
-
-            val currentHidden = preferences.hiddenByWaqanahFlow.first()
-            val report = enforcer.releaseAll(currentHidden)
-
-            if (report.applied.isNotEmpty()) {
-                val releasedPackages = report.applied.map { it.packageName }.toSet()
-                preferences.removeHiddenPackages(releasedPackages)
-            }
-
-            val hardeningRes = hardening.releaseAll()
-            _hardeningResults.value = hardeningRes
-
-            report
+            disableAndReleaseInternal()
         }
+    }
+
+    suspend fun disableAndReleaseForced(): EnforcementReport = withContext(Dispatchers.Default) {
+        enforcementLock.withLock {
+            if (!BuildConfig.DEBUG) {
+                throw IllegalStateException("disableAndReleaseForced is only permitted in debug builds")
+            }
+            disableAndReleaseInternal()
+        }
+    }
+
+    private suspend fun disableAndReleaseInternal(): EnforcementReport {
+        if (!deviceOwnerManager.isDeviceOwner()) {
+            return EnforcementReport(
+                applied = emptyList(),
+                unchanged = emptyList(),
+                failed = emptyMap(),
+                skipped = emptyList()
+            )
+        }
+
+        preferences.setEnforcementEnabled(false)
+
+        val currentHidden = preferences.hiddenByWaqanahFlow.first()
+        val report = enforcer.releaseAll(currentHidden)
+
+        if (report.applied.isNotEmpty()) {
+            val releasedPackages = report.applied.map { it.packageName }.toSet()
+            preferences.removeHiddenPackages(releasedPackages)
+        }
+
+        val hardeningRes = hardening.releaseAll()
+        _hardeningResults.value = hardeningRes
+
+        return report
     }
 
     suspend fun refreshHardeningStatus(): List<PolicyResult> = withContext(Dispatchers.Default) {

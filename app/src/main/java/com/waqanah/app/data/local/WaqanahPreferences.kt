@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -88,6 +89,38 @@ class WaqanahPreferences(private val context: Context) {
 
     val customDnsHostFlow: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[KEY_CUSTOM_DNS_HOST] ?: ""
+    }
+
+    val lockUntilFlow: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LOCK_UNTIL] ?: 0L
+    }
+
+    val lockStartedAtFlow: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LOCK_STARTED_AT] ?: 0L
+    }
+
+    val lockPinHashFlow: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LOCK_PIN_HASH]
+    }
+
+    val lockPinSaltFlow: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LOCK_PIN_SALT]
+    }
+
+    val lockFailedAttemptsFlow: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LOCK_FAILED_ATTEMPTS] ?: 0
+    }
+
+    val lockLockoutUntilFlow: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LOCK_LOCKOUT_UNTIL] ?: 0L
+    }
+
+    val lockLastSeenWallFlow: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LOCK_LAST_SEEN_WALL] ?: 0L
+    }
+
+    val lockBlockedOffAttemptsFlow: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LOCK_BLOCKED_OFF_ATTEMPTS] ?: 0
     }
 
     val blockedPackagesFlow: Flow<Set<String>> = hiddenByWaqanahFlow.map { it.keys }
@@ -200,6 +233,51 @@ class WaqanahPreferences(private val context: Context) {
         }
     }
 
+    suspend fun startLock(until: Long, startedAt: Long, pinHash: String?, pinSalt: String?) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LOCK_UNTIL] = until
+            prefs[KEY_LOCK_STARTED_AT] = startedAt
+            if (pinHash != null) prefs[KEY_LOCK_PIN_HASH] = pinHash else prefs.remove(KEY_LOCK_PIN_HASH)
+            if (pinSalt != null) prefs[KEY_LOCK_PIN_SALT] = pinSalt else prefs.remove(KEY_LOCK_PIN_SALT)
+            prefs[KEY_LOCK_FAILED_ATTEMPTS] = 0
+            prefs[KEY_LOCK_LOCKOUT_UNTIL] = 0L
+            prefs[KEY_LOCK_BLOCKED_OFF_ATTEMPTS] = 0
+        }
+    }
+
+    suspend fun clearLock() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(KEY_LOCK_UNTIL)
+            prefs.remove(KEY_LOCK_STARTED_AT)
+            prefs.remove(KEY_LOCK_PIN_HASH)
+            prefs.remove(KEY_LOCK_PIN_SALT)
+            prefs.remove(KEY_LOCK_FAILED_ATTEMPTS)
+            prefs.remove(KEY_LOCK_LOCKOUT_UNTIL)
+            prefs.remove(KEY_LOCK_BLOCKED_OFF_ATTEMPTS)
+        }
+    }
+
+    suspend fun recordFailedPin(count: Int, lockoutUntil: Long) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LOCK_FAILED_ATTEMPTS] = count
+            prefs[KEY_LOCK_LOCKOUT_UNTIL] = lockoutUntil
+        }
+    }
+
+    suspend fun bumpBlockedOff() {
+        context.dataStore.edit { prefs ->
+            val current = prefs[KEY_LOCK_BLOCKED_OFF_ATTEMPTS] ?: 0
+            prefs[KEY_LOCK_BLOCKED_OFF_ATTEMPTS] = current + 1
+        }
+    }
+
+    suspend fun advanceLastSeen(wall: Long) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[KEY_LOCK_LAST_SEEN_WALL] ?: 0L
+            prefs[KEY_LOCK_LAST_SEEN_WALL] = maxOf(wall, current)
+        }
+    }
+
     companion object {
         private val KEY_SELECTED_TRANSLATION = stringPreferencesKey("selected_translation")
         private val KEY_SELECTED_RECITER = stringPreferencesKey("selected_reciter")
@@ -214,6 +292,14 @@ class WaqanahPreferences(private val context: Context) {
         private val KEY_LAST_ENFORCEMENT_AT = longPreferencesKey("last_enforcement_at")
         private val KEY_DNS_PROVIDER = stringPreferencesKey("dns_provider")
         private val KEY_CUSTOM_DNS_HOST = stringPreferencesKey("custom_dns_host")
+        private val KEY_LOCK_UNTIL = longPreferencesKey("lock_until")
+        private val KEY_LOCK_STARTED_AT = longPreferencesKey("lock_started_at")
+        private val KEY_LOCK_PIN_HASH = stringPreferencesKey("lock_pin_hash")
+        private val KEY_LOCK_PIN_SALT = stringPreferencesKey("lock_pin_salt")
+        private val KEY_LOCK_FAILED_ATTEMPTS = intPreferencesKey("lock_failed_attempts")
+        private val KEY_LOCK_LOCKOUT_UNTIL = longPreferencesKey("lock_lockout_until")
+        private val KEY_LOCK_LAST_SEEN_WALL = longPreferencesKey("lock_last_seen_wall")
+        private val KEY_LOCK_BLOCKED_OFF_ATTEMPTS = intPreferencesKey("lock_blocked_off_attempts")
 
         val DEFAULT_BLOCKED_PACKAGES = BuiltInLists.blocklist
     }

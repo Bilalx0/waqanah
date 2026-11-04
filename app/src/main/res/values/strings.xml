@@ -112,4 +112,56 @@
     <!-- One-shot Messages -->
     <string name="msg_apply_summary">Enforcement complete: %1$d applied, %2$d unchanged, %3$d failed</string>
     <string name="msg_release_summary">Protection disabled: %1$d restored, %2$d failed</string>
+
+    <!-- Step 5 Commitment Lock Strings -->
+    <string name="card_lock_title">Commitment lock</string>
+    <string name="lock_ready_check_owner">• Device Owner: Active ✅</string>
+    <string name="lock_ready_check_protection">• Protection: Enabled ✅</string>
+    <string name="lock_ready_check_hardening">• System Hardening: Applied ✅</string>
+    <string name="lock_not_ready_warning">Complete all setup items above before starting a Commitment Lock.</string>
+    <string name="label_select_duration">Select Lock Duration:</string>
+    <string name="dur_2_min">2 Min</string>
+    <string name="dur_10_min">10 Min</string>
+    <string name="dur_1_day">1 Day</string>
+    <string name="dur_3_days">3 Days</string>
+    <string name="dur_7_days">7 Days</string>
+    <string name="dur_14_days">14 Days</string>
+    <string name="dur_30_days">30 Days</string>
+    <string name="label_trusted_pin_switch">Allow early release with a trusted person\'s PIN</string>
+    <string name="btn_set_pin">Set PIN</string>
+    <string name="btn_pin_set">PIN Set ✅</string>
+    <string name="dialog_pin_title">Set Trusted Person\'s PIN</string>
+    <string name="dialog_pin_desc">Hand the phone to your trusted person. They choose a PIN and keep it secret. You will not be able to see it.</string>
+    <string name="hint_enter_pin">Enter PIN (6-64 chars)</string>
+    <string name="hint_confirm_pin">Confirm PIN</string>
+    <string name="error_pin_mismatch">PINs do not match.</string>
+    <string name="error_invalid_pin">PIN must be 6-64 characters with at least 2 distinct characters and no leading/trailing spaces.</string>
+    <string name="btn_start_lock">Start lock</string>
+    <string name="dialog_confirm_lock_title">Confirm Commitment Lock</string>
+    <string name="dialog_confirm_lock_desc">You are locking Waqanah until %1$s. Protection cannot be turned off and settings cannot be weakened until the lock expires.\n\nType LOCK below to confirm.</string>
+    <string name="hint_type_lock">Type LOCK to confirm</string>
+    <string name="label_locked_until">Locked until: %1$s</string>
+    <string name="label_remaining_time">Time remaining: %1$s</string>
+    <string name="label_blocked_off_attempts">Blocked attempts to turn off protection: %1$d</string>
+    <string name="btn_release_with_pin">Release with trusted person\'s PIN</string>
+    <string name="dialog_release_title">Trusted Person Release</string>
+    <string name="dialog_release_desc">Enter the trusted person\'s PIN to release the Commitment Lock early.</string>
+    <string name="label_failed_attempts">Failed PIN attempts: %1$d</string>
+    <string name="label_locked_out_until">Locked out due to failed attempts until %1$s</string>
+    <string name="msg_lock_prevents_off">Locked until %1$s. Protection can\'t be turned off.</string>
+    <string name="msg_config_frozen_by_lock">Settings are locked while Commitment Lock is active.</string>
+    <string name="msg_cannot_remove_blocklist_during_lock">Cannot remove apps from blocklist while lock is active.</string>
+    <string name="msg_lock_started">Commitment lock started successfully.</string>
+    <string name="msg_lock_released">Commitment lock released.</string>
+    <string name="msg_lock_wrong_pin">Wrong PIN. Failed attempts: %1$d.</string>
+    <string name="msg_lock_locked_out">Too many failed PIN attempts. Locked out until %1$s.</string>
+    <string name="msg_lock_no_pin">No trusted PIN was set for this lock.</string>
+    <string name="msg_lock_not_locked">No active lock to release.</string>
+    <string name="msg_lock_err_owner">Device Owner is not active.</string>
+    <string name="msg_lock_err_protection">Protection must be enabled before locking.</string>
+    <string name="msg_lock_err_already">A commitment lock is already active.</string>
+    <string name="msg_lock_err_hardening">All supported hardening policies must be applied before locking.</string>
+    <string name="msg_lock_err_duration">Invalid lock duration selected.</string>
+    <string name="msg_lock_err_pin">Invalid PIN format.</string>
+    <string name="frozen_note">Controls are locked while Commitment Lock is active.</string>
 </resources>

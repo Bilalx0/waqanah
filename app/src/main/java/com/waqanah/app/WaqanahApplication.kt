@@ -15,6 +15,9 @@ class WaqanahApplication : Application() {
     lateinit var deviceOwnerManager: DeviceOwnerManager
         private set
 
+    lateinit var commitmentManager: com.waqanah.app.service.lock.CommitmentManager
+        private set
+
     lateinit var enforcementManager: EnforcementManager
         private set
 
@@ -22,8 +25,10 @@ class WaqanahApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        val preferences = com.waqanah.app.data.local.WaqanahPreferences(this)
         deviceOwnerManager = DeviceOwnerManager(this)
-        enforcementManager = EnforcementManager(this, deviceOwnerManager)
+        commitmentManager = com.waqanah.app.service.lock.CommitmentManager(this, deviceOwnerManager, preferences)
+        enforcementManager = EnforcementManager(this, deviceOwnerManager, commitmentManager)
 
         applicationScope.launch {
             ShieldServiceController.sync(this@WaqanahApplication)

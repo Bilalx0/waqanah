@@ -92,6 +92,7 @@ fun FocusLockScreen(
     val detectedBrowsers by viewModel.detectedBrowsers.collectAsState()
     val installedNonSystemApps by viewModel.installedNonSystemApps.collectAsState()
     val hardeningResults by viewModel.hardeningResults.collectAsState()
+    val lockState by viewModel.lockState.collectAsState()
     val isServiceRunning by ShieldService.running.collectAsState()
     val context = LocalContext.current
 
@@ -150,6 +151,20 @@ fun FocusLockScreen(
 
             is DeviceOwnerStatus.Active -> {
                 ActiveCard()
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                CommitmentCard(
+                    lockState = lockState,
+                    uiState = uiState,
+                    hardeningResults = hardeningResults,
+                    onStartLock = { durationMs, pin ->
+                        viewModel.startCommitmentLock(durationMs, pin)
+                    },
+                    onReleaseWithPin = { pin ->
+                        viewModel.releaseCommitmentLock(pin)
+                    }
+                )
 
                 Spacer(modifier = Modifier.height(20.dp))
 

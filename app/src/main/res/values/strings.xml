@@ -117,7 +117,9 @@
     <string name="card_lock_title">Commitment lock</string>
     <string name="lock_ready_check_owner">• Device Owner: Active ✅</string>
     <string name="lock_ready_check_protection">• Protection: Enabled ✅</string>
+    <string name="lock_ready_check_protection_off">• Protection: Off ❌</string>
     <string name="lock_ready_check_hardening">• System Hardening: Applied ✅</string>
+    <string name="lock_ready_check_hardening_off">• System Hardening: Incomplete ❌</string>
     <string name="lock_not_ready_warning">Complete all setup items above before starting a Commitment Lock.</string>
     <string name="label_select_duration">Select Lock Duration:</string>
     <string name="dur_2_min">2 Min</string>
@@ -127,6 +129,7 @@
     <string name="dur_7_days">7 Days</string>
     <string name="dur_14_days">14 Days</string>
     <string name="dur_30_days">30 Days</string>
+    <string name="dur_days_format">%1$d Days</string>
     <string name="label_trusted_pin_switch">Allow early release with a trusted person\'s PIN</string>
     <string name="btn_set_pin">Set PIN</string>
     <string name="btn_pin_set">PIN Set ✅</string>

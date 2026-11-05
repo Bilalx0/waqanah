@@ -38,11 +38,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.SecureFlagPolicy
 import com.waqanah.app.BuildConfig
 import com.waqanah.app.R
 import com.waqanah.app.service.admin.DeviceOwnerStatus
 import com.waqanah.app.service.hardening.PolicyResult
 import com.waqanah.app.service.hardening.PolicyState
+import com.waqanah.app.service.lock.HardeningGate
 import com.waqanah.app.service.lock.LockPolicy
 import com.waqanah.app.service.lock.LockState
 import kotlinx.coroutines.delay
@@ -65,14 +68,26 @@ fun CommitmentCard(
 
     val isOwner = uiState.deviceOwnerStatus is DeviceOwnerStatus.Active
     val isProtectionOn = uiState.enforcementEnabled
-    val isHardeningApplied = hardeningResults.isNotEmpty() && hardeningResults.none {
-        it.state != PolicyState.UNSUPPORTED && it.state != PolicyState.APPLIED && it.state != PolicyState.UNCHANGED
-    }
+    val isHardeningApplied = HardeningGate.isReady(hardeningResults)
     val isReadyToLock = isOwner && isProtectionOn && isHardeningApplied
 
     var selectedDurationMs by remember { mutableLongStateOf(LockPolicy.allowedDurationsMs(BuildConfig.DEBUG).first()) }
     var useTrustedPin by remember { mutableStateOf(false) }
     var trustedPinState by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(lockState.active) {
+        if (lockState.active) {
+            trustedPinState = null
+            useTrustedPin = false
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            trustedPinState = null
+            useTrustedPin = false
+        }
+    }
 
     var showPinDialog by remember { mutableStateOf(false) }
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -107,11 +122,11 @@ fun CommitmentCard(
                 // Readiness Checklist
                 Text(text = stringResource(R.string.lock_ready_check_owner), style = MaterialTheme.typography.bodySmall)
                 Text(
-                    text = if (isProtectionOn) stringResource(R.string.lock_ready_check_protection) else "• Protection: Off ❌",
+                    text = if (isProtectionOn) stringResource(R.string.lock_ready_check_protection) else stringResource(R.string.lock_ready_check_protection_off),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Text(
-                    text = if (isHardeningApplied) stringResource(R.string.lock_ready_check_hardening) else "• System Hardening: Incomplete ❌",
+                    text = if (isHardeningApplied) stringResource(R.string.lock_ready_check_hardening) else stringResource(R.string.lock_ready_check_hardening_off),
                     style = MaterialTheme.typography.bodySmall
                 )
 
@@ -143,7 +158,7 @@ fun CommitmentCard(
                             7 * 86_400_000L -> stringResource(R.string.dur_7_days)
                             14 * 86_400_000L -> stringResource(R.string.dur_14_days)
                             30 * 86_400_000L -> stringResource(R.string.dur_30_days)
-                            else -> "${durMs / 86_400_000L} Days"
+                            else -> stringResource(R.string.dur_days_format, durMs / 86_400_000L)
                         }
                         FilterChip(
                             selected = selectedDurationMs == durMs,
@@ -199,7 +214,7 @@ fun CommitmentCard(
                 // Active Lock UI
                 val untilDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(lockState.lockedUntil))
                 Text(
-                    text = stringResource(R.string.label_locked_locked_until, untilDate),
+                    text = stringResource(R.string.label_locked_until, untilDate),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -211,8 +226,7 @@ fun CommitmentCard(
                         val remMs = LockPolicy.remainingMs(lockState.lockedUntil, System.currentTimeMillis())
                         val hours = remMs / (1000 * 60 * 60)
                         val mins = (remMs / (1000 * 60)) % 60
-                        val secs = (remMs / 1000) % 60
-                        remainingText = String.format(Locale.getDefault(), "%02dh %02dm %02ds", hours, mins, secs)
+                        remainingText = String.format(Locale.getDefault(), "%02dh %02dm", hours, mins)
                         delay(30_000L)
                     }
                 }
@@ -257,6 +271,7 @@ fun CommitmentCard(
         var pinErr by remember { mutableStateOf<String?>(null) }
 
         AlertDialog(
+            properties = DialogProperties(securePolicy = SecureFlagPolicy.SecureOn),
             onDismissRequest = {
                 showPinDialog = false
                 p1 = ""; p2 = ""
@@ -364,6 +379,7 @@ fun CommitmentCard(
         val isLockedOut = System.currentTimeMillis() < lockState.lockoutUntil
 
         AlertDialog(
+            properties = DialogProperties(securePolicy = SecureFlagPolicy.SecureOn),
             onDismissRequest = { showReleaseDialog = false; relPin = "" },
             title = { Text(stringResource(R.string.dialog_release_title)) },
             text = {

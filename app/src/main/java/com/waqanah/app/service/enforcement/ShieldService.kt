@@ -75,8 +75,9 @@ class ShieldService : Service() {
         serviceScope.launch {
             val isOwner = app.deviceOwnerManager.isDeviceOwner()
             val isEnabled = preferences.enforcementEnabledFlow.first()
+            val lockActive = app.commitmentManager.isActive()
 
-            if (!isOwner || !isEnabled) {
+            if (!isOwner || !(isEnabled || lockActive)) {
                 Log.w(TAG, "ShieldService started but Device Owner or Protection is inactive. Stopping.")
                 stopSelf()
                 return@launch

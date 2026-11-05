@@ -20,8 +20,9 @@ object ShieldServiceController {
 
         val isOwner = app.deviceOwnerManager.isDeviceOwner()
         val isEnabled = preferences.enforcementEnabledFlow.first()
+        val lockActive = app.commitmentManager.isActive()
 
-        if (isOwner && isEnabled) {
+        if (isOwner && (isEnabled || lockActive)) {
             try {
                 if (!ShieldService.running.value) {
                     val serviceIntent = Intent(appContext, ShieldService::class.java)

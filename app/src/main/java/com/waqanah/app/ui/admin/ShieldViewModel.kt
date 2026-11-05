@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -133,6 +134,7 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
     fun setProtectionEnabled(enabled: Boolean) {
         viewModelScope.launch {
             if (!enabled && app.commitmentManager.isActive()) {
+                app.commitmentManager.noteBlockedOffAttempt()
                 val untilFormatted = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(lockState.value.lockedUntil))
                 _messageEvent.emit(app.getString(com.waqanah.app.R.string.msg_lock_prevents_off, untilFormatted))
                 return@launch
@@ -211,7 +213,7 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
     fun updateCustomBlocklist(packages: Set<String>) {
         viewModelScope.launch {
             if (app.commitmentManager.isActive()) {
-                val current = uiState.value.customBlocklist
+                val current = preferences.customBlocklistFlow.first()
                 if (!packages.containsAll(current)) {
                     _messageEvent.emit(app.getString(com.waqanah.app.R.string.msg_cannot_remove_blocklist_during_lock))
                     return@launch
@@ -223,8 +225,8 @@ class ShieldViewModel(application: Application) : AndroidViewModel(application) 
 
     fun startCommitmentLock(durationMs: Long, pin: String?) {
         viewModelScope.launch {
-            val enabled = uiState.value.enforcementEnabled
-            val hardening = hardeningResults.value
+            val enabled = preferences.enforcementEnabledFlow.first()
+            val hardening = enforcementManager.refreshHardeningStatus()
             val res = app.commitmentManager.start(durationMs, pin, enabled, hardening)
             val msg = when (res) {
                 com.waqanah.app.service.lock.StartResult.SUCCESS -> app.getString(com.waqanah.app.R.string.msg_lock_started)

@@ -8,9 +8,13 @@ import com.waqanah.app.service.enforcement.ShieldServiceController
 import com.waqanah.app.service.hardening.PolicyResult
 import com.waqanah.app.service.hardening.PolicyState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 data class LockState(
@@ -47,6 +51,13 @@ class CommitmentManager(
     private val preferences: WaqanahPreferences
 ) {
 
+    private val tickerFlow: Flow<Unit> = flow {
+        while (true) {
+            emit(Unit)
+            delay(30_000L)
+        }
+    }
+
     val state: Flow<LockState> = combine(
         preferences.lockUntilFlow,
         preferences.lockStartedAtFlow,
@@ -54,7 +65,8 @@ class CommitmentManager(
         preferences.lockFailedAttemptsFlow,
         preferences.lockLockoutUntilFlow,
         preferences.lockLastSeenWallFlow,
-        preferences.lockBlockedOffAttemptsFlow
+        preferences.lockBlockedOffAttemptsFlow,
+        tickerFlow
     ) { args: Array<Any?> ->
         val until = args[0] as Long
         val startedAt = args[1] as Long
@@ -78,13 +90,17 @@ class CommitmentManager(
         )
     }
 
+    private val lockMutex = Mutex()
+
     private fun String?.isNullOrBlank(): Boolean = this == null || this.trim().isEmpty()
 
     suspend fun isActive(): Boolean {
         val until = preferences.lockUntilFlow.first()
         val lastSeen = preferences.lockLastSeenWallFlow.first()
         val now = System.currentTimeMillis()
-        preferences.advanceLastSeen(now)
+        if (now - lastSeen >= 60_000L) {
+            preferences.advanceLastSeen(now)
+        }
         val effective = LockPolicy.effectiveNow(now, lastSeen)
         return LockPolicy.isActive(until, effective)
     }
@@ -94,28 +110,24 @@ class CommitmentManager(
         pin: String?,
         protectionEnabled: Boolean,
         hardening: List<PolicyResult>
-    ): StartResult {
+    ): StartResult = lockMutex.withLock {
         if (!deviceOwnerManager.isDeviceOwner()) return StartResult.NOT_DEVICE_OWNER
         if (!protectionEnabled) return StartResult.PROTECTION_OFF
         if (isActive()) return StartResult.ALREADY_LOCKED
 
-        val hasUnappliedHardening = hardening.any { result ->
-            result.state != PolicyState.UNSUPPORTED &&
-            result.state != PolicyState.APPLIED &&
-            result.state != PolicyState.UNCHANGED
-        }
-        if (hasUnappliedHardening) return StartResult.HARDENING_NOT_APPLIED
+        if (!HardeningGate.isReady(hardening)) return StartResult.HARDENING_NOT_APPLIED
 
         if (!LockPolicy.allowedDurationsMs(BuildConfig.DEBUG).contains(durationMs)) {
             return StartResult.INVALID_DURATION
         }
 
-        val hasPin = !pin.isNullOrBlank()
-        if (hasPin && !LockPolicy.isValidPin(pin!!)) {
+        val hasPin = pin != null
+        if (hasPin && !LockPolicy.isValidPin(pin)) {
             return StartResult.INVALID_PIN
         }
 
-        val now = System.currentTimeMillis()
+        val lastSeen = preferences.lockLastSeenWallFlow.first()
+        val now = LockPolicy.effectiveNow(System.currentTimeMillis(), lastSeen)
         val until = LockPolicy.lockedUntilFor(now, durationMs, BuildConfig.DEBUG)
 
         var pinHashB64: String? = null
@@ -124,7 +136,7 @@ class CommitmentManager(
         if (hasPin) {
             withContext(Dispatchers.Default) {
                 val salt = PinHasher.newSalt()
-                val hash = PinHasher.hash(pin!!, salt)
+                val hash = PinHasher.hash(pin, salt)
                 pinSaltB64 = PinHasher.toBase64(salt)
                 pinHashB64 = PinHasher.toBase64(hash)
             }
@@ -135,7 +147,7 @@ class CommitmentManager(
         return StartResult.SUCCESS
     }
 
-    suspend fun releaseWithPin(pin: String): ReleaseResult {
+    suspend fun releaseWithPin(pin: String): ReleaseResult = lockMutex.withLock {
         if (!isActive()) return ReleaseResult.NotLocked
 
         val pinHashB64 = preferences.lockPinHashFlow.first()

@@ -175,6 +175,7 @@ fun FocusLockScreen(
                     detectedBrowsers = detectedBrowsers,
                     installedNonSystemApps = installedNonSystemApps,
                     hardeningResults = hardeningResults,
+                    lockActive = lockState.active,
                     onProtectionToggle = { enabled ->
                         if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -229,6 +230,7 @@ private fun ActiveEnforcementPanel(
     detectedBrowsers: List<AppInfo>,
     installedNonSystemApps: List<AppInfo>,
     hardeningResults: List<PolicyResult>,
+    lockActive: Boolean,
     onProtectionToggle: (Boolean) -> Unit,
     viewModel: ShieldViewModel
 ) {
@@ -258,6 +260,7 @@ private fun ActiveEnforcementPanel(
                 )
                 Switch(
                     checked = uiState.enforcementEnabled,
+                    enabled = !lockActive,
                     onCheckedChange = { onProtectionToggle(it) }
                 )
             }
@@ -283,6 +286,7 @@ private fun ActiveEnforcementPanel(
             Box {
                 OutlinedButton(
                     onClick = { showBrowserDropdown = true },
+                    enabled = !lockActive,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     val label = detectedBrowsers.find { it.packageName == uiState.allowedBrowserPackage }?.label
@@ -334,6 +338,7 @@ private fun ActiveEnforcementPanel(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
                     selected = uiState.enforcementMode == EnforcementMode.HIDE_AND_SUSPEND,
+                    enabled = !lockActive,
                     onClick = { viewModel.setEnforcementMode(EnforcementMode.HIDE_AND_SUSPEND) }
                 )
                 Text(text = stringResource(R.string.mode_hide_and_suspend), style = MaterialTheme.typography.bodySmall)
@@ -341,6 +346,7 @@ private fun ActiveEnforcementPanel(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
                     selected = uiState.enforcementMode == EnforcementMode.UNINSTALL,
+                    enabled = !lockActive,
                     onClick = { showUninstallWarningDialog = true }
                 )
                 Text(text = stringResource(R.string.mode_uninstall), style = MaterialTheme.typography.bodySmall)
@@ -361,6 +367,7 @@ private fun ActiveEnforcementPanel(
                 )
                 Switch(
                     checked = uiState.hideSystemBrowsers,
+                    enabled = !lockActive,
                     onCheckedChange = { viewModel.setHideSystemBrowsers(it) }
                 )
             }
@@ -395,6 +402,7 @@ private fun ActiveEnforcementPanel(
             ) {
                 OutlinedButton(
                     onClick = { showAllowListPicker = true },
+                    enabled = !lockActive,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(stringResource(R.string.btn_never_hide_allowlist))
@@ -472,6 +480,7 @@ private fun ActiveEnforcementPanel(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
                     selected = uiState.dnsProvider == DnsProvider.FAMILY,
+                    enabled = !lockActive,
                     onClick = { viewModel.setDnsProvider(DnsProvider.FAMILY) }
                 )
                 Text(text = stringResource(R.string.dns_family), style = MaterialTheme.typography.bodySmall)
@@ -479,6 +488,7 @@ private fun ActiveEnforcementPanel(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
                     selected = uiState.dnsProvider == DnsProvider.ADULT,
+                    enabled = !lockActive,
                     onClick = { viewModel.setDnsProvider(DnsProvider.ADULT) }
                 )
                 Text(text = stringResource(R.string.dns_adult), style = MaterialTheme.typography.bodySmall)
@@ -486,6 +496,7 @@ private fun ActiveEnforcementPanel(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
                     selected = uiState.dnsProvider == DnsProvider.CUSTOM,
+                    enabled = !lockActive,
                     onClick = { viewModel.setDnsProvider(DnsProvider.CUSTOM) }
                 )
                 Text(text = stringResource(R.string.dns_custom), style = MaterialTheme.typography.bodySmall)
@@ -496,6 +507,7 @@ private fun ActiveEnforcementPanel(
                 OutlinedTextField(
                     value = customDnsInput,
                     onValueChange = { customDnsInput = it },
+                    enabled = !lockActive,
                     label = { Text(stringResource(R.string.hint_custom_dns)) },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -510,7 +522,7 @@ private fun ActiveEnforcementPanel(
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { viewModel.setCustomDnsHost(customDnsInput) },
-                    enabled = DnsHostValidator.isValid(customDnsInput),
+                    enabled = !lockActive && DnsHostValidator.isValid(customDnsInput),
                     modifier = Modifier.align(Alignment.End)
                 ) {
                     Text(stringResource(R.string.btn_save))
